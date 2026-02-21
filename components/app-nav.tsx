@@ -2,9 +2,10 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
+import { Badge } from "@/components/ui/badge"
 import {
   Activity,
   BarChart3,
@@ -14,9 +15,11 @@ import {
   Heart,
   LogOut,
   Menu,
+  UserPlus,
   X,
 } from "lucide-react"
 import { store } from "@/lib/store"
+import type { UserProfile } from "@/lib/types"
 
 const navItems = [
   { href: "/dashboard", label: "Dashboard", icon: BarChart3 },
@@ -29,11 +32,18 @@ const navItems = [
 export function AppNav() {
   const pathname = usePathname()
   const [mobileOpen, setMobileOpen] = useState(false)
+  const [user, setUser] = useState<UserProfile | null>(null)
+
+  useEffect(() => {
+    setUser(store.getUser())
+  }, [])
 
   function handleLogout() {
     store.logout()
     window.location.href = "/"
   }
+
+  const isGuest = user?.isGuest === true
 
   return (
     <header className="sticky top-0 z-50 border-b border-border bg-card/80 backdrop-blur-md">
@@ -45,6 +55,11 @@ export function AppNav() {
           <span className="text-lg font-bold tracking-tight text-foreground font-serif">
             RecoverAI
           </span>
+          {isGuest && (
+            <Badge variant="outline" className="ml-1 text-xs border-chart-4 text-chart-4">
+              Guest
+            </Badge>
+          )}
         </Link>
 
         {/* Desktop nav */}
@@ -71,10 +86,30 @@ export function AppNav() {
         </nav>
 
         <div className="hidden items-center gap-2 md:flex">
-          <Button variant="ghost" size="sm" onClick={handleLogout} className="text-muted-foreground">
-            <LogOut className="mr-2 h-4 w-4" />
-            Sign Out
-          </Button>
+          {isGuest ? (
+            <>
+              <Link href="/register">
+                <Button variant="default" size="sm" className="gap-1.5">
+                  <UserPlus className="h-3.5 w-3.5" />
+                  Create Account
+                </Button>
+              </Link>
+              <Button variant="ghost" size="sm" onClick={handleLogout} className="text-muted-foreground">
+                <LogOut className="mr-2 h-4 w-4" />
+                Exit
+              </Button>
+            </>
+          ) : (
+            <div className="flex items-center gap-3">
+              <span className="text-sm font-medium text-foreground">
+                {user?.name}
+              </span>
+              <Button variant="ghost" size="sm" onClick={handleLogout} className="text-muted-foreground">
+                <LogOut className="mr-2 h-4 w-4" />
+                Sign Out
+              </Button>
+            </div>
+          )}
         </div>
 
         {/* Mobile toggle */}
@@ -112,12 +147,22 @@ export function AppNav() {
               </Link>
             )
           })}
+          {isGuest && (
+            <Link
+              href="/register"
+              onClick={() => setMobileOpen(false)}
+              className="mt-2 flex w-full items-center gap-3 rounded-lg bg-primary px-3 py-2.5 text-sm font-medium text-primary-foreground"
+            >
+              <UserPlus className="h-4 w-4" />
+              Create Account
+            </Link>
+          )}
           <button
             onClick={handleLogout}
             className="mt-2 flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
           >
             <LogOut className="h-4 w-4" />
-            Sign Out
+            {isGuest ? "Exit Guest Mode" : "Sign Out"}
           </button>
         </nav>
       )}

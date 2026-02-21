@@ -7,9 +7,10 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Activity } from "lucide-react"
+import { Activity, UserX } from "lucide-react"
 import { store } from "@/lib/store"
 import { toast } from "sonner"
+import { Separator } from "@/components/ui/separator"
 
 export default function RegisterPage() {
   const router = useRouter()
@@ -97,7 +98,24 @@ export default function RegisterPage() {
                 {loading ? "Creating account..." : "Create Account"}
               </Button>
             </form>
-            <p className="mt-6 text-center text-sm text-muted-foreground">
+            <div className="mt-6 flex items-center gap-3">
+              <Separator className="flex-1" />
+              <span className="text-xs text-muted-foreground">or</span>
+              <Separator className="flex-1" />
+            </div>
+            <Button
+              variant="outline"
+              className="mt-4 w-full gap-2"
+              onClick={() => {
+                store.guestLogin()
+                toast.success("Welcome, Guest! Your data will be saved locally.")
+                router.push("/dashboard")
+              }}
+            >
+              <UserX className="h-4 w-4" />
+              Continue as Guest
+            </Button>
+            <p className="mt-4 text-center text-sm text-muted-foreground">
               Already have an account?{" "}
               <Link href="/login" className="font-medium text-primary hover:underline">
                 Sign In

@@ -6,9 +6,9 @@ export interface AssessmentInput {
   addictionType: AddictionType
   frequencyPerWeek: number
   durationYears: number
-  quantityLevel: number // 1-5
+  quantityLevel: number
   withdrawalSymptoms: boolean
-  mentalStressLevel: number // 1-5
+  mentalStressLevel: number
   sleepHours: number
   age: number
 }
@@ -44,8 +44,33 @@ export interface DailyLog {
   consumed: boolean
   sleepHours: number
   exerciseMinutes: number
-  moodScore: number // 1-5
+  moodScore: number
   recoveryScore: number
+}
+
+// ─── Nutrition Plan Types ───
+
+export interface MealPlan {
+  mealTime: "breakfast" | "lunch" | "dinner" | "snack"
+  foods: string[]
+  benefits: string
+}
+
+export interface NutritionPlan {
+  phase: "early" | "mid" | "late"
+  meals: MealPlan[]
+  hydrationTip: string
+  avoidFoods: string[]
+}
+
+// ─── Recovery Plan Types ───
+
+export interface RecoveryWeek {
+  week: number
+  goals: string[]
+  activities: string[]
+  tips: string[]
+  nutrition: NutritionPlan
 }
 
 export interface RecoveryPlan {
@@ -55,17 +80,58 @@ export interface RecoveryPlan {
   rehabRecommended: boolean
 }
 
-export interface RecoveryWeek {
-  week: number
-  goals: string[]
-  activities: string[]
-  tips: string[]
+// ─── Reminder Types ───
+
+export type ReminderCategory = "food" | "exercise" | "medication" | "sleep" | "hydration" | "custom"
+
+export interface Reminder {
+  id: string
+  label: string
+  time: string // HH:mm format
+  category: ReminderCategory
+  enabled: boolean
 }
+
+// ─── Hospital / Booking Types ───
+
+export interface RehabCentre {
+  id: string
+  name: string
+  address: string
+  city: string
+  state: string
+  phone: string
+  specialties: AddictionType[]
+  rating: number
+  reviewCount: number
+  availableSlots: number
+  lat: number
+  lng: number
+  type: "hospital" | "rehab" | "clinic"
+  description: string
+  amenities: string[]
+}
+
+export interface Booking {
+  id: string
+  hospitalId: string
+  hospitalName: string
+  date: string
+  timeSlot: string
+  patientName: string
+  patientPhone: string
+  status: "confirmed" | "pending" | "cancelled"
+  referenceNumber: string
+  createdAt: string
+}
+
+// ─── User / App State ───
 
 export interface UserProfile {
   id: string
   name: string
   email: string
+  isGuest: boolean
 }
 
 export interface AppState {
@@ -73,4 +139,6 @@ export interface AppState {
   assessments: AssessmentResult[]
   dailyLogs: DailyLog[]
   currentPlan: RecoveryPlan | null
+  reminders: Reminder[]
+  bookings: Booking[]
 }

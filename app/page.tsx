@@ -1,6 +1,7 @@
 "use client"
 
 import Link from "next/link"
+import { GuestButton } from "@/components/guest-button"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import {
@@ -109,6 +110,7 @@ export default function LandingPage() {
                 Sign In
               </Button>
             </Link>
+            <GuestButton />
           </div>
         </div>
       </section>

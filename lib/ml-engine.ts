@@ -7,6 +7,8 @@ import type {
   DailyLog,
   RecoveryPlan,
   RecoveryWeek,
+  NutritionPlan,
+  MealPlan,
 } from "./types"
 
 // ─── Severity Scoring (weighted algorithm mimicking ML classification) ───
@@ -218,6 +220,137 @@ export function calculateRelapseRisk(logs: DailyLog[]): number {
   return Math.min(Math.max(Math.round(risk), 0), 100)
 }
 
+// ─── Nutrition Plan Generator ───
+
+const NUTRITION_DB: Record<string, Record<string, MealPlan[]>> = {
+  alcohol: {
+    early: [
+      { mealTime: "breakfast", foods: ["Oatmeal with blueberries", "Scrambled eggs with spinach", "Green tea"], benefits: "B-vitamins and antioxidants to repair liver damage" },
+      { mealTime: "lunch", foods: ["Grilled salmon with quinoa", "Steamed broccoli", "Lemon water"], benefits: "Omega-3 fatty acids reduce inflammation and support brain repair" },
+      { mealTime: "dinner", foods: ["Chicken soup with vegetables", "Brown rice", "Herbal tea"], benefits: "Easy-to-digest meals help restore gut health" },
+      { mealTime: "snack", foods: ["Greek yogurt with walnuts", "Apple slices", "Chamomile tea"], benefits: "Probiotics and healthy fats for nutrient absorption" },
+    ],
+    mid: [
+      { mealTime: "breakfast", foods: ["Whole grain toast with avocado", "Poached eggs", "Fresh orange juice"], benefits: "Healthy fats and folate to rebuild liver cells" },
+      { mealTime: "lunch", foods: ["Lean turkey wrap with leafy greens", "Sweet potato soup", "Water with lemon"], benefits: "Lean protein and complex carbs for sustained energy" },
+      { mealTime: "dinner", foods: ["Baked cod with asparagus", "Wild rice pilaf", "Beetroot salad"], benefits: "Beetroot supports liver detoxification pathways" },
+      { mealTime: "snack", foods: ["Mixed berries smoothie", "Almonds", "Turmeric milk"], benefits: "Anti-inflammatory compounds accelerate healing" },
+    ],
+    late: [
+      { mealTime: "breakfast", foods: ["Acai bowl with granola", "Boiled eggs", "Matcha latte"], benefits: "Sustained energy and antioxidant protection" },
+      { mealTime: "lunch", foods: ["Mediterranean salad with chickpeas", "Whole grain bread", "Kombucha"], benefits: "Fermented foods restore healthy gut microbiome" },
+      { mealTime: "dinner", foods: ["Grilled chicken with roasted vegetables", "Lentil soup", "Mint tea"], benefits: "Complete protein for long-term tissue maintenance" },
+      { mealTime: "snack", foods: ["Dark chocolate (70%+)", "Trail mix", "Coconut water"], benefits: "Magnesium and potassium for nerve function" },
+    ],
+  },
+  smoking: {
+    early: [
+      { mealTime: "breakfast", foods: ["Citrus fruit salad", "Whole grain cereal with milk", "Ginger tea"], benefits: "Vitamin C repairs lung tissue damaged by smoking" },
+      { mealTime: "lunch", foods: ["Carrot and ginger soup", "Grilled chicken breast", "Steamed kale"], benefits: "Beta-carotene and vitamin A help regenerate respiratory cells" },
+      { mealTime: "dinner", foods: ["Baked sweet potato", "Steamed fish with turmeric", "Garlic sauteed greens"], benefits: "Anti-inflammatory compounds reduce airway swelling" },
+      { mealTime: "snack", foods: ["Orange slices", "Celery with hummus", "Green smoothie"], benefits: "Crunchy vegetables reduce oral cravings" },
+    ],
+    mid: [
+      { mealTime: "breakfast", foods: ["Pomegranate yogurt bowl", "Whole wheat toast", "Berry smoothie"], benefits: "Polyphenols protect lung cells from oxidative stress" },
+      { mealTime: "lunch", foods: ["Tomato and lentil soup", "Spinach and feta wrap", "Apple cider water"], benefits: "Lycopene and iron boost oxygen-carrying capacity" },
+      { mealTime: "dinner", foods: ["Salmon with garlic butter", "Roasted Brussels sprouts", "Quinoa"], benefits: "Omega-3s reduce lung inflammation and improve breathing" },
+      { mealTime: "snack", foods: ["Carrot sticks with guacamole", "Pineapple chunks", "Peppermint tea"], benefits: "Healthy fats improve nutrient absorption" },
+    ],
+    late: [
+      { mealTime: "breakfast", foods: ["Chia seed pudding with mango", "Almond butter toast", "Warm lemon water"], benefits: "Omega-3 rich seeds for long-term lung health" },
+      { mealTime: "lunch", foods: ["Grilled vegetable and halloumi salad", "Bone broth", "Kiwi"], benefits: "Collagen-building nutrients strengthen airways" },
+      { mealTime: "dinner", foods: ["Turkey stir-fry with bell peppers", "Brown rice noodles", "Jasmine tea"], benefits: "Vitamin C-rich peppers maintain respiratory immunity" },
+      { mealTime: "snack", foods: ["Brazil nuts", "Grapefruit", "Golden milk"], benefits: "Selenium and antioxidants for cellular repair" },
+    ],
+  },
+  drugs: {
+    early: [
+      { mealTime: "breakfast", foods: ["Banana and peanut butter smoothie", "Whole grain toast", "Warm milk with honey"], benefits: "Tryptophan and potassium support neurotransmitter recovery" },
+      { mealTime: "lunch", foods: ["Lentil and vegetable stew", "Brown rice", "Fresh fruit"], benefits: "Complex carbs stabilize blood sugar for steady mood" },
+      { mealTime: "dinner", foods: ["Baked chicken thigh", "Mashed sweet potato", "Steamed green beans"], benefits: "Amino acids from protein rebuild depleted neurotransmitters" },
+      { mealTime: "snack", foods: ["Hard-boiled eggs", "Handful of cashews", "Chamomile tea"], benefits: "Choline and magnesium support brain chemistry balance" },
+    ],
+    mid: [
+      { mealTime: "breakfast", foods: ["Eggs benedict with smoked salmon", "Avocado toast", "Green juice"], benefits: "DHA and healthy fats rebuild brain cell membranes" },
+      { mealTime: "lunch", foods: ["Chicken and avocado bowl", "Black beans", "Fermented vegetables"], benefits: "Gut-brain axis support with probiotics and fiber" },
+      { mealTime: "dinner", foods: ["Grilled steak with roasted garlic", "Baked potato", "Sauteed mushrooms"], benefits: "Iron and B12 reverse cognitive fatigue" },
+      { mealTime: "snack", foods: ["Dark chocolate squares", "Walnuts", "Turmeric latte"], benefits: "Flavonoids improve blood flow to the brain" },
+    ],
+    late: [
+      { mealTime: "breakfast", foods: ["Overnight oats with berries and flax", "Greek yogurt", "Matcha tea"], benefits: "Sustained-release energy supports stable neurotransmitter levels" },
+      { mealTime: "lunch", foods: ["Tuna and white bean salad", "Sourdough bread", "Olive oil dressing"], benefits: "Omega-3 rich fish maintains cognitive function" },
+      { mealTime: "dinner", foods: ["Herb-crusted salmon", "Roasted root vegetables", "Quinoa tabbouleh"], benefits: "Complete nutrition for long-term brain health maintenance" },
+      { mealTime: "snack", foods: ["Pumpkin seeds", "Blueberry muffin (whole grain)", "Ginkgo tea"], benefits: "Zinc and antioxidants for memory and focus" },
+    ],
+  },
+  food: {
+    early: [
+      { mealTime: "breakfast", foods: ["1/2 cup steel-cut oats", "1 small banana", "Black coffee or tea"], benefits: "Portion-controlled complex carbs prevent blood sugar spikes" },
+      { mealTime: "lunch", foods: ["4oz grilled chicken", "Large mixed salad", "1 tbsp olive oil dressing"], benefits: "High-protein, high-fiber meal promotes lasting satiety" },
+      { mealTime: "dinner", foods: ["4oz baked fish", "1 cup roasted vegetables", "1/2 cup brown rice"], benefits: "Balanced macronutrients prevent binge triggers" },
+      { mealTime: "snack", foods: ["10 almonds", "1 small apple", "Herbal tea"], benefits: "Pre-portioned snacks build mindful eating habits" },
+    ],
+    mid: [
+      { mealTime: "breakfast", foods: ["Veggie egg white omelette", "1 slice whole grain toast", "Green tea"], benefits: "High-protein start reduces mid-morning cravings" },
+      { mealTime: "lunch", foods: ["Turkey lettuce wraps", "Cucumber and tomato salad", "Sparkling water"], benefits: "Low-calorie-density foods help relearn hunger signals" },
+      { mealTime: "dinner", foods: ["Grilled shrimp skewers", "Cauliflower rice", "Steamed edamame"], benefits: "Satisfying textures without excess calories" },
+      { mealTime: "snack", foods: ["Cottage cheese with berries", "Celery sticks", "Water with mint"], benefits: "Protein-rich snacks stabilize appetite hormones" },
+    ],
+    late: [
+      { mealTime: "breakfast", foods: ["Smoothie bowl with protein powder", "Fresh fruit topping", "Matcha"], benefits: "Customizable yet portion-aware meal building" },
+      { mealTime: "lunch", foods: ["Buddha bowl with tofu", "Mixed grains", "Tahini dressing"], benefits: "Intuitive eating with balanced, colorful plates" },
+      { mealTime: "dinner", foods: ["Lean beef stir-fry", "Zucchini noodles", "Miso soup"], benefits: "Satisfying meals that maintain healthy relationship with food" },
+      { mealTime: "snack", foods: ["Rice cakes with avocado", "Cherry tomatoes", "Rooibos tea"], benefits: "Mindful snacking as a sustainable lifelong habit" },
+    ],
+  },
+}
+
+const AVOID_FOODS: Record<string, string[]> = {
+  alcohol: ["All alcoholic beverages", "Foods cooked with alcohol", "Sugary drinks (trigger cravings)", "Processed foods high in sugar", "Excessive caffeine"],
+  smoking: ["Spicy foods (increase oral irritation)", "Excessive caffeine", "Highly processed snacks", "Sugary foods (blood sugar crashes)", "Red meat in excess"],
+  drugs: ["Excessive sugar and candy", "Highly caffeinated energy drinks", "Processed junk food", "Alcohol", "Foods with artificial stimulants"],
+  food: ["Trigger foods (personal list)", "Ultra-processed snacks", "Sugary beverages", "Large portions of refined carbs", "Eating directly from packages"],
+}
+
+const HYDRATION_TIPS: Record<string, Record<string, string>> = {
+  alcohol: {
+    early: "Drink at least 10 glasses of water daily. Add electrolyte drinks to restore mineral balance depleted by alcohol.",
+    mid: "Maintain 8-10 glasses of water. Try herbal teas like dandelion root for liver support.",
+    late: "Keep hydrated with 8 glasses daily. Infused water with cucumber or berries makes a great alcohol-free ritual.",
+  },
+  smoking: {
+    early: "Drink 8-12 glasses of water to flush nicotine. Add honey-lemon water to soothe throat irritation.",
+    mid: "Stay with 8-10 glasses daily. Green tea and warm water with ginger help clear respiratory congestion.",
+    late: "Maintain 8 glasses. Herbal teas like peppermint and eucalyptus support clear breathing.",
+  },
+  drugs: {
+    early: "Hydrate heavily with 10+ glasses. Water helps flush toxins and supports kidney recovery.",
+    mid: "Keep at 8-10 glasses. Coconut water helps restore electrolytes and supports brain hydration.",
+    late: "Maintain 8 glasses. Bone broth and herbal teas provide minerals alongside hydration.",
+  },
+  food: {
+    early: "Drink a glass of water 20 minutes before each meal. Aim for 8 glasses to distinguish thirst from hunger.",
+    mid: "Continue pre-meal water habit. Sparkling water can satisfy oral fixation without calories.",
+    late: "Maintain intuitive hydration. Listen to your body and sip water throughout the day.",
+  },
+}
+
+export function generateNutritionPlan(
+  addictionType: string,
+  phase: "early" | "mid" | "late"
+): NutritionPlan {
+  const meals = NUTRITION_DB[addictionType]?.[phase] || NUTRITION_DB.alcohol[phase]
+  const avoidFoods = AVOID_FOODS[addictionType] || AVOID_FOODS.alcohol
+  const hydrationTip = HYDRATION_TIPS[addictionType]?.[phase] || "Drink at least 8 glasses of water daily."
+
+  return {
+    phase,
+    meals,
+    hydrationTip,
+    avoidFoods,
+  }
+}
+
 // ─── Recovery Plan Generator ───
 
 const ADDICTION_LABELS: Record<string, string> = {
@@ -244,7 +377,8 @@ function generateWeeklyPlan(
         ? "mid"
         : "late"
 
-    const week: RecoveryWeek = { week: i, goals: [], activities: [], tips: [] }
+    const nutrition = generateNutritionPlan(addictionType, phase)
+    const week: RecoveryWeek = { week: i, goals: [], activities: [], tips: [], nutrition }
 
     if (phase === "early") {
       week.goals = [
