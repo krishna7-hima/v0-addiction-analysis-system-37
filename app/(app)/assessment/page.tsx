@@ -2,177 +2,179 @@
 
 import { useState } from "react"
 import { useRouter } from "next/navigation"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Slider } from "@/components/ui/slider"
-import { Switch } from "@/components/ui/switch"
-import { ClipboardList } from "lucide-react"
-import { toast } from "sonner"
-import type { AddictionType, AssessmentInput } from "@/lib/types"
-import { runAssessment, generateRecoveryPlan } from "@/lib/ml-engine"
-import { store } from "@/lib/store"
+import { ClipboardList, ChevronRight, ChevronLeft } from "lucide-react"
+
+const STEPS = [
+  "Type & Profile",
+  "Usage Pattern",
+  "Physical Health",
+  "Mental & Emotional",
+  "Social & Background",
+]
 
 export default function AssessmentPage() {
   const router = useRouter()
-  const [loading, setLoading] = useState(false)
+  const [step, setStep] = useState(0)
 
-  // 🔹 Profile Details
-  const [name, setName] = useState("")
-  const [profileAge, setProfileAge] = useState(18)
-  const [gender, setGender] = useState("")
-  const [weight, setWeight] = useState(60)
-  const [height, setHeight] = useState(170)
+  const [form, setForm] = useState({
+    addiction_type: "",
+    age: "",
+    gender: "",
+    frequency_per_week: "",
+    duration_years: "",
+    withdrawal_symptoms: false,
+    mental_stress: 3,
+    employment_status: "",
+  })
 
-  // 🔹 Addiction Details
-  const [addictionType, setAddictionType] = useState<AddictionType>("alcohol")
-  const [frequencyPerWeek, setFrequencyPerWeek] = useState(3)
-  const [durationYears, setDurationYears] = useState(2)
-  const [quantityLevel, setQuantityLevel] = useState(3)
-  const [withdrawalSymptoms, setWithdrawalSymptoms] = useState(false)
-  const [mentalStressLevel, setMentalStressLevel] = useState(3)
-  const [sleepHours, setSleepHours] = useState(7)
-
-  function handleSubmit(e: React.FormEvent) {
-    e.preventDefault()
-
-    if (!name || !gender) {
-      toast.error("Please fill all profile details")
-      return
-    }
-
-    setLoading(true)
-
-    const profileData = {
-      name,
-      age: profileAge,
-      gender,
-      weight,
-      height,
-    }
-
-    localStorage.setItem("userProfile", JSON.stringify(profileData))
-
-    const input: AssessmentInput = {
-      addictionType,
-      frequencyPerWeek,
-      durationYears,
-      quantityLevel,
-      withdrawalSymptoms,
-      mentalStressLevel,
-      sleepHours,
-      age: profileAge,
-    }
-
-    setTimeout(() => {
-      const result = runAssessment(input)
-      store.addAssessment(result)
-
-      const plan = generateRecoveryPlan(
-        result.severityLevel,
-        result.input.addictionType,
-        result.recoveryWeeks
-      )
-
-      store.setRecoveryPlan(plan)
-
-      toast.success("Assessment complete!")
-      router.push("/dashboard")
-    }, 800)
+  const update = (key: string, value: any) => {
+    setForm((prev) => ({ ...prev, [key]: value }))
   }
 
-  const addictionTypes = [
-    { value: "alcohol", label: "Alcohol" },
-    { value: "smoking", label: "Smoking / Tobacco" },
-    { value: "drugs", label: "Drugs / Substances" },
-    { value: "food", label: "Food / Eating" },
-  ]
+  const next = () => setStep((s) => s + 1)
+  const back = () => setStep((s) => s - 1)
+
+  const submit = () => {
+    console.log("Assessment Data:", form)
+    router.push("/dashboard")
+  }
 
   return (
-    <div className="mx-auto max-w-2xl">
-      <div className="mb-8 flex items-center gap-3">
-        <ClipboardList className="h-6 w-6 text-primary" />
-        <h1 className="text-2xl font-bold font-serif">
-          Addiction Assessment
-        </h1>
+    <div className="max-w-2xl mx-auto py-10">
+      <div className="text-center mb-6">
+        <ClipboardList className="mx-auto mb-2" />
+        <h1 className="text-2xl font-bold">Addiction Assessment</h1>
+        <p className="text-sm text-muted-foreground">
+          Step {step + 1} of {STEPS.length}
+        </p>
       </div>
 
-      <form onSubmit={handleSubmit}>
-        <div className="flex flex-col gap-6">
+      <div className="border rounded-xl p-6 shadow">
+        {step === 0 && (
+          <div className="space-y-4">
+            <h2 className="font-semibold">Your Profile</h2>
 
-          {/* 🔥 PROFILE SECTION */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Personal Information</CardTitle>
-              <CardDescription>
-                Enter your basic health details
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="flex flex-col gap-4">
+            <input
+              type="number"
+              placeholder="Age"
+              className="w-full border p-2 rounded"
+              value={form.age}
+              onChange={(e) => update("age", e.target.value)}
+            />
 
-              <div>
-                <Label>Full Name</Label>
-                <Input value={name} onChange={(e) => setName(e.target.value)} />
-              </div>
+            <select
+              className="w-full border p-2 rounded"
+              value={form.gender}
+              onChange={(e) => update("gender", e.target.value)}
+            >
+              <option value="">Select Gender</option>
+              <option value="male">Male</option>
+              <option value="female">Female</option>
+              <option value="other">Other</option>
+            </select>
+          </div>
+        )}
 
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label>Age</Label>
-                  <Input
-                    type="number"
-                    value={profileAge}
-                    onChange={(e) => setProfileAge(Number(e.target.value))}
-                  />
-                </div>
-                <div>
-                  <Label>Gender</Label>
-                  <Select value={gender} onValueChange={setGender}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select gender" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="male">Male</SelectItem>
-                      <SelectItem value="female">Female</SelectItem>
-                      <SelectItem value="other">Other</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
+        {step === 1 && (
+          <div className="space-y-4">
+            <h2 className="font-semibold">Usage Pattern</h2>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label>Weight (kg)</Label>
-                  <Input
-                    type="number"
-                    value={weight}
-                    onChange={(e) => setWeight(Number(e.target.value))}
-                  />
-                </div>
-                <div>
-                  <Label>Height (cm)</Label>
-                  <Input
-                    type="number"
-                    value={height}
-                    onChange={(e) => setHeight(Number(e.target.value))}
-                  />
-                </div>
-              </div>
+            <input
+              type="number"
+              placeholder="Frequency per week"
+              className="w-full border p-2 rounded"
+              value={form.frequency_per_week}
+              onChange={(e) => update("frequency_per_week", e.target.value)}
+            />
 
-            </CardContent>
-          </Card>
+            <input
+              type="number"
+              placeholder="Duration (years)"
+              className="w-full border p-2 rounded"
+              value={form.duration_years}
+              onChange={(e) => update("duration_years", e.target.value)}
+            />
+          </div>
+        )}
 
-          {/* 🔥 Existing Addiction Cards remain same */}
-          {/* (No changes needed below your existing cards) */}
+        {step === 2 && (
+          <div className="space-y-4">
+            <h2 className="font-semibold">Physical Health</h2>
 
-          <Button type="submit" size="lg" className="w-full" disabled={loading}>
-            {loading ? "Analyzing..." : "Run Assessment"}
-          </Button>
+            <label>
+              <input
+                type="checkbox"
+                checked={form.withdrawal_symptoms}
+                onChange={(e) =>
+                  update("withdrawal_symptoms", e.target.checked)
+                }
+              />
+              Withdrawal Symptoms
+            </label>
+          </div>
+        )}
 
+        {step === 3 && (
+          <div className="space-y-4">
+            <h2 className="font-semibold">Mental Health</h2>
+
+            <input
+              type="range"
+              min="1"
+              max="5"
+              value={form.mental_stress}
+              onChange={(e) =>
+                update("mental_stress", Number(e.target.value))
+              }
+            />
+          </div>
+        )}
+
+        {step === 4 && (
+          <div className="space-y-4">
+            <h2 className="font-semibold">Social</h2>
+
+            <select
+              className="w-full border p-2 rounded"
+              value={form.employment_status}
+              onChange={(e) =>
+                update("employment_status", e.target.value)
+              }
+            >
+              <option value="">Employment Status</option>
+              <option value="employed">Employed</option>
+              <option value="student">Student</option>
+              <option value="unemployed">Unemployed</option>
+            </select>
+          </div>
+        )}
+
+        <div className="flex justify-between mt-6">
+          <button
+            onClick={back}
+            disabled={step === 0}
+            className="px-4 py-2 border rounded"
+          >
+            <ChevronLeft size={16} /> Back
+          </button>
+
+          {step < 4 ? (
+            <button
+              onClick={next}
+              className="px-4 py-2 bg-blue-600 text-white rounded"
+            >
+              Continue <ChevronRight size={16} />
+            </button>
+          ) : (
+            <button
+              onClick={submit}
+              className="px-4 py-2 bg-green-600 text-white rounded"
+            >
+              Submit Assessment
+            </button>
+          )}
         </div>
-      </form>
+      </div>
     </div>
   )
 }
